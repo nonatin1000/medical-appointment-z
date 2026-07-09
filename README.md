@@ -36,14 +36,19 @@ Recebe uma mensagem do usuário e:
 medical-appointment-z/
 ├── app/
 │   ├── main.py                 # API FastAPI (/chat)
-│   ├── config.py               # env + LangSmith
+│   ├── config.py               # env + LangSmith + OpenRouter
+│   ├── models/                 # ModelConfig, IntentSchema
 │   ├── prompts/v1/             # prompts do classificador
-│   ├── services/               # AppointmentService (in-memory)
+│   ├── services/
+│   │   ├── appointment_service.py
+│   │   └── open_router_services.py
 │   └── graph/
 │       ├── graph.py            # StateGraph
 │       └── nodes/              # identify / schedule / cancel / message
 ├── tests/
-│   └── test_router_e2e.py
+│   ├── conftest.py
+│   ├── test_router_e2e.py
+│   └── unit/                   # testes unitários
 ├── Dockerfile
 ├── docker-compose.yml
 ├── Makefile
