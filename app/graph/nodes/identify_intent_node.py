@@ -2,15 +2,12 @@ from __future__ import annotations
 
 import json
 import logging
-import re
 from typing import Any, Dict, List, Tuple
 
-from langchain_core.messages import HumanMessage, SystemMessage
-from langchain_openai import ChatOpenAI
-
-from app.config import OPENAI_API_KEY, OPENAI_BASE_URL, OPENROUTER_MODEL, TEMPERATURE
+from app.models.intent import IntentSchema
 from app.prompts.v1.identify_intent import USER_PROMPT_TEMPLATE, get_system_prompt
 from app.services.appointment_service import professionals as default_professionals
+from app.services.open_router_services import open_router_service
 
 logger = logging.getLogger(__name__)
 
@@ -52,37 +49,30 @@ def identify_intent_node(state: Dict[str, Any]) -> Dict[str, Any]:
 
     try:
         logger.info("Calling LLM for intent classification")
-        llm = ChatOpenAI(
-            model=OPENROUTER_MODEL,
-            temperature=TEMPERATURE,
-            api_key=OPENAI_API_KEY,
-            base_url=OPENAI_BASE_URL,
-            model_kwargs={"response_format": {"type": "json_object"}},
-        )
         system_prompt = get_system_prompt(professionals)
         user_prompt = USER_PROMPT_TEMPLATE.format(question=input_text)
-        user_prompt = f"{user_prompt}\nResponda em JSON válido."
-
-        response = llm.invoke(
-            [SystemMessage(content=system_prompt), HumanMessage(content=user_prompt)],
-            config={"run_name": "identify_intent"},
+        result = open_router_service.generate_structured(
+            system_prompt,
+            user_prompt,
+            IntentSchema,
         )
-        try:
-            data = json.loads(response.content)
-        except json.JSONDecodeError:
-            match = re.search(r"\{.*\}", response.content, re.DOTALL)
-            if not match:
-                raise
-            data = json.loads(match.group(0))
+        if not result["success"]:
+            return {
+                **state,
+                "professionals": professionals,
+                "intent": "unknown",
+                "error": result["error"],
+            }
 
+        data = result["data"]
         return {
             **state,
             "professionals": professionals,
-            **data,
+            **data.model_dump(exclude_none=True),
         }
 
     except Exception as exc:
-        logger.error(f"Error in identify_intent_node: {exc}")
+        logger.error("Error in identify_intent_node: %s", exc)
         return {
             **state,
             "professionals": professionals,

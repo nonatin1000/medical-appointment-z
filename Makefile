@@ -28,6 +28,11 @@ test:
 	PYTHONPATH=. poetry run pytest -q
 
 studio:
+	@echo ""
+	@echo "LangGraph Dev API:  http://127.0.0.1:$(LANGGRAPH_PORT)"
+	@echo "LangGraph Studio:   https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:$(LANGGRAPH_PORT)"
+	@echo "API Docs:           http://127.0.0.1:$(LANGGRAPH_PORT)/docs"
+	@echo ""
 	poetry run langgraph dev --host 0.0.0.0 --port $(LANGGRAPH_PORT)
 
 docker-build:
@@ -35,6 +40,11 @@ docker-build:
 
 docker-up:
 	$(COMPOSE) up --build -d
+	@echo ""
+	@echo "API:                http://127.0.0.1:$(PORT)/docs"
+	@echo "LangGraph Dev API:  http://127.0.0.1:$(LANGGRAPH_PORT)"
+	@echo "LangGraph Studio:   https://smith.langchain.com/studio/?baseUrl=http://127.0.0.1:$(LANGGRAPH_PORT)"
+	@echo ""
 
 docker-down:
 	$(COMPOSE) down

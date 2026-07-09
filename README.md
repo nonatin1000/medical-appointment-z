@@ -131,15 +131,68 @@ POST /chat
 Content-Type: application/json
 ```
 
-Exemplo:
+## Exemplos de prompts
+
+Profissionais padrão (seed):
+
+| ID | Nome | Especialidade |
+|---|---|---|
+| 1 | Dr. Alicio da Silva | Cardiologia |
+| 2 | Dra. Ana Pereira | Dermatologia |
+| 3 | Dra. Carol Gomes | Neurologia |
+
+Consultas já existentes no seed: Joao da Silva com Alicio **hoje às 11h**; Luana Costa com Ana Pereira **amanhã às 14h**.
+
+### Swagger / `POST /chat`
+
+**Agendar**
+
+```json
+{
+  "message": "Olá, sou Maria Santos e quero agendar uma consulta com Dr. Alicio da Silva amanhã às 15h para um check-up regular",
+  "professionals": [
+    { "id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia" },
+    { "id": 2, "name": "Dra. Ana Pereira", "specialty": "Dermatologia" },
+    { "id": 3, "name": "Dra. Carol Gomes", "specialty": "Neurologia" }
+  ]
+}
+```
+
+**Cancelar** (bate com o seed)
+
+```json
+{
+  "message": "Cancele minha consulta com Dr. Alicio da Silva que tenho hoje às 11h, me chamo Joao da Silva",
+  "professionals": [
+    { "id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia" },
+    { "id": 2, "name": "Dra. Ana Pereira", "specialty": "Dermatologia" },
+    { "id": 3, "name": "Dra. Carol Gomes", "specialty": "Neurologia" }
+  ]
+}
+```
+
+**Desconhecido**
+
+```json
+{
+  "message": "Qual a previsão do tempo amanhã?",
+  "professionals": [
+    { "id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia" }
+  ]
+}
+```
+
+Exemplo com curl:
 
 ```bash
 curl -X POST http://127.0.0.1:8000/chat \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "Olá, sou Maria e quero agendar com Dr. Alicio da Silva amanhã às 14h",
+    "message": "Olá, sou Maria Santos e quero agendar com Dr. Alicio da Silva amanhã às 15h",
     "professionals": [
-      {"id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia"}
+      {"id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia"},
+      {"id": 2, "name": "Dra. Ana Pereira", "specialty": "Dermatologia"},
+      {"id": 3, "name": "Dra. Carol Gomes", "specialty": "Neurologia"}
     ]
   }'
 ```
@@ -150,6 +203,7 @@ curl -X POST http://127.0.0.1:8000/chat \
 make test
 ```
 
+Há testes unitários em `tests/unit/` (serviço, schema, OpenRouter mockado, nodes e roteamento).  
 Os testes E2E usam stub do `identify_intent` (sem chamar LLM), para ficarem determinísticos.
 
 ## LangGraph Studio
@@ -173,21 +227,29 @@ No dropdown do Studio deve aparecer:
 
 ### 3. Como testar no Studio
 
-**Opção A — só texto**
+**Opção A — só texto** (usa a lista padrão de profissionais)
 
 ```text
-Olá, sou Maria e quero agendar com Dr. Alicio da Silva amanhã às 14h
+Olá, sou Maria Santos e quero agendar com Dr. Alicio da Silva amanhã às 15h para um check-up
 ```
 
 **Opção B — JSON no chat**
 
 ```json
 {
-  "message": "Olá, sou Maria e quero agendar com Dr. Alicio da Silva amanhã às 14h",
+  "message": "Olá, sou Maria Santos e quero agendar uma consulta com Dr. Alicio da Silva amanhã às 15h para um check-up regular",
   "professionals": [
-    {"id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia"}
+    { "id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia" },
+    { "id": 2, "name": "Dra. Ana Pereira", "specialty": "Dermatologia" },
+    { "id": 3, "name": "Dra. Carol Gomes", "specialty": "Neurologia" }
   ]
 }
+```
+
+**Cancelar no Studio (texto)**
+
+```text
+Cancele minha consulta com Dr. Alicio da Silva que tenho hoje às 11h, me chamo Joao da Silva
 ```
 
 Dicas:
@@ -207,6 +269,8 @@ Dicas:
 | Resposta final | `app/graph/nodes/message_generator_node.py` |
 | Estado do grafo | `app/graph/graph.py` (`GraphState`) |
 | Persistência in-memory | `app/services/appointment_service.py` |
+| Cliente OpenRouter | `app/services/open_router_services.py` |
+| Schema de intent | `app/models/intent.py` |
 
 ## Observabilidade
 
