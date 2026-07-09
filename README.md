@@ -44,7 +44,11 @@ medical-appointment-z/
 │       └── nodes/              # identify / schedule / cancel / message
 ├── tests/
 │   └── test_router_e2e.py
+├── Dockerfile
+├── docker-compose.yml
+├── Makefile
 ├── langgraph.json              # registro do grafo no Studio
+├── .env.example
 ├── .env
 └── pyproject.toml
 ```
@@ -66,12 +70,16 @@ START
 ```bash
 cd medical-appointment-z
 pyenv activate medical-appointment-z   # se usar pyenv
-poetry install
+make install
 ```
 
 ### 2. Variáveis de ambiente
 
-Crie/ajuste o `.env`:
+```bash
+cp .env.example .env
+```
+
+Preencha o `.env`:
 
 ```env
 LANGSMITH_TRACING=true
@@ -90,8 +98,30 @@ OPENAI_BASE_URL=https://openrouter.ai/api/v1
 
 ## Rodar a API
 
+### Local (Poetry)
+
 ```bash
-poetry run uvicorn app.main:app --reload
+make run
+```
+
+### Docker (API + LangGraph Dev)
+
+```bash
+make docker-up
+```
+
+Sobe os dois serviços:
+
+- API: `http://127.0.0.1:8000/docs`
+- LangGraph Dev: `http://127.0.0.1:2024`
+
+Outros comandos úteis:
+
+```bash
+make docker-logs
+make docker-studio-logs
+make docker-down
+make docker-shell
 ```
 
 Endpoint:
@@ -117,7 +147,7 @@ curl -X POST http://127.0.0.1:8000/chat \
 ## Rodar testes
 
 ```bash
-PYTHONPATH=. poetry run pytest -q
+make test
 ```
 
 Os testes E2E usam stub do `identify_intent` (sem chamar LLM), para ficarem determinísticos.
@@ -134,7 +164,7 @@ poetry add --group dev "langgraph-cli[inmem]"
 
 ```bash
 cd medical-appointment-z
-poetry run langgraph dev
+make studio
 ```
 
 No dropdown do Studio deve aparecer:
@@ -184,8 +214,23 @@ Com `LANGSMITH_TRACING=true`, as execuções aparecem no LangSmith no projeto co
 
 O Studio (`langgraph dev`) usa o `langgraph.json` para carregar o grafo localmente.
 
+## Makefile
+
+```bash
+make help
+make install
+make run
+make test
+make studio
+make docker-build
+make docker-up
+make docker-down
+make docker-logs
+```
+
 ## Observações
 
-- O storage de consultas é **em memória** (reinicia ao reiniciar o processo).
+- O storage de consultas é **em memória** (reinicia ao reiniciar o processo/container).
 - `reason` é opcional no agendamento.
 - Campos obrigatórios para schedule/cancel: `professional_id`, `patient_name`, `datetime`.
+- Os containers usam o `.env` via `docker-compose.yml` (API na porta `8000`, LangGraph Dev na `2024`).

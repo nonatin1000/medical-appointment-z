@@ -1,11 +1,11 @@
 [project]
 name = "medical-appointment-z"
 version = "0.1.0"
-description = ""
+description = "Medical appointment scheduling agent (FastAPI + LangGraph)"
 authors = [
-    {name = "Nonato Sales",email = "nrdesales@gmail.com"}
+    { name = "Nonato Sales", email = "nrdesales@gmail.com" }
 ]
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "fastapi (>=0.139.0,<0.140.0)",
     "uvicorn (>=0.51.0,<0.52.0)",
@@ -14,18 +14,18 @@ dependencies = [
     "langgraph (>=1.2.8,<2.0.0)",
     "pydantic (>=2.13.4,<3.0.0)",
     "jinja2 (>=3.1.6,<4.0.0)",
-    "python-dotenv (>=1.2.2,<2.0.0)"
+    "python-dotenv (>=1.2.2,<2.0.0)",
 ]
-
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
-[tool.poetry.dependencies]
-python = ">=3.12,<4.0.0"
+[tool.poetry]
+package-mode = false
+
 [dependency-groups]
 dev = [
     "pytest (>=9.1.1,<10.0.0)",
-    "langgraph-cli[inmem] (>=0.4.30,<0.5.0)"
+    "langgraph-cli[inmem] (>=0.4.30,<0.5.0)",
 ]

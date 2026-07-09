@@ -1,0 +1,52 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: medical-appointment-z:latest
+    container_name: medical-appointment-z-api
+    ports:
+      - "${PORT:-8000}:8000"
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/docs"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  studio:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: medical-appointment-z:latest
+    container_name: medical-appointment-z-studio
+    depends_on:
+      - api
+    command:
+      [
+        "langgraph",
+        "dev",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "2024",
+        "--no-browser",
+      ]
+    ports:
+      - "${LANGGRAPH_PORT:-2024}:2024"
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:2024/ok"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
