@@ -4,7 +4,13 @@ Assistente de agendamento médico com **FastAPI + LangGraph + LangChain**, em Py
 
 Versão em Python do template TypeScript do curso, para estudar os mesmos conceitos (intent, grafo, nós e tracing) na stack Python.
 
-![Demo do projeto no Swagger](docs/demo/demo.gif)
+### Demo Swagger (`POST /chat`)
+
+![Demo Swagger](docs/demo/demo-swagger.gif)
+
+### Demo LangGraph Studio
+
+![Demo LangGraph Studio](docs/demo/demo-langgraph.gif)
 
 ## O que o projeto faz
 
