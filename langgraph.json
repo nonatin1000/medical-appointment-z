@@ -1,0 +1,7 @@
+{
+  "dependencies": ["."],
+  "graphs": {
+    "medical_appointment_graph": "./app/graph/graph.py:graph"
+  },
+  "env": ".env"
+}
