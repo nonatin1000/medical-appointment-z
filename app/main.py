@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict, List
 
 from fastapi import FastAPI, HTTPException
@@ -10,6 +11,8 @@ from app.config import configure_langsmith
 from app.graph.graph import build_appointment_graph
 
 configure_langsmith()
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI()
 graph = build_appointment_graph()
@@ -35,7 +38,8 @@ def chat(payload: ChatRequest):
         )
         return {"state": result}
     except Exception as e:
+        logger.exception("Error processing chat request")
         raise HTTPException(
             status_code=500,
-            detail=str(e) or "An error occurred while processing your request.",
-        )
+            detail="An error occurred while processing your request.",
+        ) from e

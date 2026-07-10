@@ -7,6 +7,12 @@ from app.services.appointment_service import AppointmentService
 
 logger = logging.getLogger(__name__)
 
+_REQUIRED_FIELDS = {
+    "professional_id": "Professional ID is required",
+    "datetime": "Appointment datetime is required",
+    "patient_name": "Patient name is required",
+}
+
 
 def canceller_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
@@ -14,18 +20,21 @@ def canceller_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     logger.info("Cancelling appointment...")
     service = AppointmentService()
-    required_fields = ["professional_id", "patient_name", "datetime"]
     try:
-        if any(not state.get(field) for field in required_fields):
-            return {**state, "action_success": False}
+        errors = [message for field, message in _REQUIRED_FIELDS.items() if not state.get(field)]
+        if errors:
+            error_messages = ", ".join(errors)
+            logger.warning("Validation failed: %s", error_messages)
+            return {**state, "action_success": False, "action_error": error_messages}
+
         appt_date = datetime.fromisoformat(state["datetime"].replace("Z", "+00:00"))
-        appointment = service.cancel_appointment(
-            professional_id=int(state.get("professional_id", 0)),
+        service.cancel_appointment(
+            professional_id=int(state["professional_id"]),
+            patient_name=state["patient_name"],
             date=appt_date,
         )
-        state["appointment"] = appointment
         logger.info("Appointment cancelled successfully")
-        return {**state, "action_success": True, }
+        return {**state, "action_success": True}
     except Exception as e:
         logger.error(f"Error cancelling appointment: {e}")
         return {

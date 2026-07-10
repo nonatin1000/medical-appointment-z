@@ -58,9 +58,11 @@ class OpenRouterService:
                 config={"run_name": "generate_structured"},
             )
             return {"success": True, "data": data}
-        except Exception as e:
-            logger.error("Error generating structured output: %s", e)
-            return {"success": False, "error": str(e)}
-
+        except Exception:
+            logger.exception("Error generating structured output")
+            return {
+                "success": False,
+                "error": "structured_output_generation_failed",
+            }
 
 open_router_service = OpenRouterService()

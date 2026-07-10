@@ -1,12 +1,16 @@
 import os
 import subprocess
+import sys
 import tempfile
 
 
 def main() -> None:
+    if len(sys.argv) < 2:
+        sys.exit("Usage: python scripts/_commit_no_coauthor.py <commit message>")
+
     tree = subprocess.check_output(["git", "write-tree"], text=True).strip()
     parent = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
-    msg = "Generate final replies with LLM structured output and update tests.\n"
+    msg = sys.argv[1].rstrip("\n") + "\n"
     with tempfile.NamedTemporaryFile("w", delete=False, encoding="utf-8") as handle:
         handle.write(msg)
         msg_path = handle.name

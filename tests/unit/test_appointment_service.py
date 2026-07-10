@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 
 import pytest
 
@@ -58,10 +58,16 @@ def test_book_appointment_raises_when_unavailable(appointment_service: Appointme
 
 def test_cancel_appointment_success(appointment_service: AppointmentService):
     dt = appointment_module._today_at_11_utc()
-    assert appointment_service.cancel_appointment(professionals[0]["id"], dt) is True
+    assert appointment_service.cancel_appointment(professionals[0]["id"], "Joao da Silva", dt) is True
     assert appointment_service.get_appointment(professionals[0]["id"], dt) is None
 
 
 def test_cancel_appointment_raises_when_not_found(appointment_service: AppointmentService, free_slot: datetime):
     with pytest.raises(ValueError, match="Appointment not found"):
-        appointment_service.cancel_appointment(professionals[0]["id"], free_slot)
+        appointment_service.cancel_appointment(professionals[0]["id"], "Joao da Silva", free_slot)
+
+
+def test_cancel_appointment_raises_for_wrong_patient(appointment_service: AppointmentService):
+    dt = appointment_module._today_at_11_utc()
+    with pytest.raises(ValueError, match="Appointment not found"):
+        appointment_service.cancel_appointment(professionals[0]["id"], "Outra Pessoa", dt)

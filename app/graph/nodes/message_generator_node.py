@@ -58,7 +58,13 @@ def message_generator_node(state: Dict[str, Any]) -> Dict[str, Any]:
             reply = result["data"].message
 
         return {**state, "messages": [*messages, AIMessage(content=reply)]}
-        
-    except Exception as e:
-        logger.error(f"Error generating message: {e}")
-        return {**state, "messages": [*messages, AIMessage(content=f"An error occurred while processing your request: {e}")]}
+
+    except Exception:
+        logger.exception("Error generating message")
+        return {
+            **state,
+            "messages": [
+                *messages,
+                AIMessage(content="An error occurred while processing your request."),
+            ],
+        }

@@ -39,4 +39,4 @@ def test_generate_structured_failure_returns_error_dict():
         result = service.generate_structured("sys", "user", IntentSchema)
 
     assert result["success"] is False
-    assert "boom" in result["error"]
+    assert result["error"] == "structured_output_generation_failed"

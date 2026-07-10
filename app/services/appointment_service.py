@@ -5,19 +5,11 @@ from typing import Optional, List
 
 
 @dataclass
-class Professional:
-    id: int
-    name: str
-    specialty: str
-
-
-@dataclass
 class Appointment:
     date: str
     patient_name: str
     reason: str
     professional_id: int
-
 
 
 def _today_at_11_utc() -> datetime:
@@ -59,13 +51,15 @@ _appointments: List[dict] = [
 
 class AppointmentService:
 
-    def get_appointment(self, professional_id: int, date: datetime, patient_name: Optional[str] = None, reason: Optional[str] = None) -> Optional[Appointment]:
-
+    def get_appointment(self, professional_id: int, date: datetime, patient_name: Optional[str] = None) -> Optional[Appointment]:
         for appointment in _appointments:
-            if appointment["professional_id"] == professional_id and appointment["date"] == date.isoformat():
+            if (
+                appointment["professional_id"] == professional_id
+                and appointment["date"] == date.isoformat()
+                and (not patient_name or appointment["patient_name"] == patient_name)
+            ):
                 return Appointment(**appointment)
         return None
-
 
     def check_availability(self, professional_id: int, date: datetime) -> bool:
         return self.get_appointment(professional_id, date) is None
@@ -83,10 +77,13 @@ class AppointmentService:
         _appointments.append(new_appointment)
         return new_appointment
 
-
-    def cancel_appointment(self, professional_id: int, date: datetime) -> bool:
-        for appointment in _appointments:
-            if appointment["professional_id"] == professional_id and appointment["date"] == date.isoformat():
-                _appointments.remove(appointment)
+    def cancel_appointment(self, professional_id: int, patient_name: str, date: datetime) -> bool:
+        for index, appointment in enumerate(_appointments):
+            if (
+                appointment["professional_id"] == professional_id
+                and appointment["date"] == date.isoformat()
+                and appointment["patient_name"] == patient_name
+            ):
+                del _appointments[index]
                 return True
         raise ValueError("Appointment not found")

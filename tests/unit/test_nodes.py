@@ -81,6 +81,19 @@ def test_scheduler_node_success(free_slot):
 def test_scheduler_node_missing_fields():
     result = scheduler_node({"professional_id": 1})
     assert result["action_success"] is False
+    assert "Appointment datetime is required" in result["action_error"]
+    assert "Patient name is required" in result["action_error"]
+
+
+def test_scheduler_node_uses_default_reason(free_slot):
+    state = {
+        "professional_id": professionals[0]["id"],
+        "patient_name": "Maria Santos",
+        "datetime": free_slot.isoformat().replace("+00:00", "Z"),
+    }
+    result = scheduler_node(state)
+    assert result["action_success"] is True
+    assert result["appointment_data"]["reason"] == "general consultation"
 
 
 def test_canceller_node_success():
@@ -105,6 +118,26 @@ def test_canceller_node_not_found(free_slot):
     result = canceller_node(state)
     assert result["action_success"] is False
     assert "Appointment not found" in result["action_error"]
+
+
+def test_canceller_node_wrong_patient_cannot_cancel():
+    from app.services import appointment_service as svc
+
+    state = {
+        "professional_id": professionals[0]["id"],
+        "patient_name": "Outra Pessoa",
+        "datetime": svc._today_at_11_utc().isoformat().replace("+00:00", "Z"),
+    }
+    result = canceller_node(state)
+    assert result["action_success"] is False
+    assert "Appointment not found" in result["action_error"]
+
+
+def test_canceller_node_missing_fields():
+    result = canceller_node({"patient_name": "Maria"})
+    assert result["action_success"] is False
+    assert "Professional ID is required" in result["action_error"]
+    assert "Appointment datetime is required" in result["action_error"]
 
 
 def test_message_generator_success():

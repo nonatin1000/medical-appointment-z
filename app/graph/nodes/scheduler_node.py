@@ -7,27 +7,34 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+_REQUIRED_FIELDS = {
+    "professional_id": "Professional ID is required",
+    "datetime": "Appointment datetime is required",
+    "patient_name": "Patient name is required",
+}
+
 
 def scheduler_node(state: Dict[str, Any]) -> Dict[str, Any]:
     """
     Schedule an appointment.
     """
     logger.info("Scheduling appointment...")
-    required_fields = ["professional_id", "patient_name", "datetime"]
 
     try:
-        if any(not state.get(field) for field in required_fields):
-            return {**state, "action_success": False}
-            
+        errors = [message for field, message in _REQUIRED_FIELDS.items() if not state.get(field)]
+        if errors:
+            error_messages = ", ".join(errors)
+            logger.warning("Validation failed: %s", error_messages)
+            return {**state, "action_success": False, "action_error": error_messages}
+
         service = AppointmentService()
         appt_date = datetime.fromisoformat(state["datetime"].replace("Z", "+00:00"))
         appointment = service.book_appointment(
-            professional_id=int(state.get("professional_id", 0)),
+            professional_id=int(state["professional_id"]),
             date=appt_date,
-            patient_name=state.get("patient_name", ""),
-            reason=state.get("reason", ""),
+            patient_name=state["patient_name"],
+            reason=state.get("reason") or "general consultation",
         )
-        state["appointment"] = appointment
         logger.info("Appointment scheduled successfully")
         return {**state, "action_success": True, "appointment_data": appointment}
     except Exception as e:
