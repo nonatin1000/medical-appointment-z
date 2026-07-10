@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Callable
 
 from app.models.intent import IntentSchema
 from app.prompts.v1.identify_intent import USER_PROMPT_TEMPLATE, get_system_prompt
 from app.services.appointment_service import professionals as default_professionals
-from app.services.open_router_service import open_router_service
+from app.services.open_router_service import OpenRouterService
 
 logger = logging.getLogger(__name__)
 
@@ -41,41 +41,47 @@ def _extract_input(state: Dict[str, Any]) -> Tuple[str, List[Dict[str, Any]]]:
 
     return str(raw), professionals
 
+def create_identify_intent_node(llm_client: OpenRouterService) -> Callable[[Dict[str, Any]], Dict[str, Any]]:
+    """Cria um nó de identificação de intent."""
+    
+    logger.info("Creating identify intent node...")
 
-def identify_intent_node(state: Dict[str, Any]) -> Dict[str, Any]:
-    logger.info("Identifying intent...")
+    def identify_intent_node(state: Dict[str, Any]) -> Dict[str, Any]:
+        logger.info("Identifying intent...")
 
-    input_text, professionals = _extract_input(state)
+        input_text, professionals = _extract_input(state)
 
-    try:
-        logger.info("Calling LLM for intent classification")
-        system_prompt = get_system_prompt(professionals)
-        user_prompt = USER_PROMPT_TEMPLATE.format(question=input_text)
-        result = open_router_service.generate_structured(
-            system_prompt,
-            user_prompt,
-            IntentSchema,
-        )
-        if not result["success"]:
+        try:
+            logger.info("Calling LLM for intent classification")
+            system_prompt = get_system_prompt(professionals)
+            user_prompt = USER_PROMPT_TEMPLATE.format(question=input_text)
+            result = llm_client.generate_structured(
+                system_prompt,
+                user_prompt,
+                IntentSchema,
+            )
+            if not result["success"]:
+                return {
+                    **state,
+                    "professionals": professionals,
+                    "intent": "unknown",
+                    "error": result["error"],
+                }
+
+            data = result["data"]
+            return {
+                **state,
+                "professionals": professionals,
+                **data.model_dump(exclude_none=True),
+            }
+
+        except Exception as exc:
+            logger.error("Error in identify_intent_node: %s", exc)
             return {
                 **state,
                 "professionals": professionals,
                 "intent": "unknown",
-                "error": result["error"],
+                "error": str(exc) or "Intent identification failed",
             }
 
-        data = result["data"]
-        return {
-            **state,
-            "professionals": professionals,
-            **data.model_dump(exclude_none=True),
-        }
-
-    except Exception as exc:
-        logger.error("Error in identify_intent_node: %s", exc)
-        return {
-            **state,
-            "professionals": professionals,
-            "intent": "unknown",
-            "error": str(exc) or "Intent identification failed",
-        }
+    return identify_intent_node

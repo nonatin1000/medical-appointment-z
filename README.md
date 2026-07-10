@@ -43,6 +43,7 @@ medical-appointment-z/
 │   │   ├── appointment_service.py
 │   │   └── open_router_service.py
 │   └── graph/
+│       ├── factory.py          # DI: cria LLM + AppointmentService e monta o grafo
 │       ├── graph.py            # StateGraph
 │       └── nodes/              # identify / schedule / cancel / message
 ├── tests/
@@ -177,11 +178,15 @@ Consultas já existentes no seed: Joao da Silva com Alicio **hoje às 11h**; Lua
 
 ### Swagger / `POST /chat`
 
+Body alinhado ao TS: campo principal `question` (mín. 10 caracteres).  
+`message` ainda é aceito como alias. `professionals` é opcional (melhoria do Python).  
+A resposta é o **estado do grafo** (flat), não `{ "state": ... }`.
+
 **Agendar** → cenário `schedule_success`
 
 ```json
 {
-  "message": "Olá, sou Maria Santos e quero agendar uma consulta com Dr. Alicio da Silva amanhã às 15h para um check-up regular",
+  "question": "Olá, sou Maria Santos e quero agendar uma consulta com Dr. Alicio da Silva amanhã às 15h para um check-up regular",
   "professionals": [
     { "id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia" },
     { "id": 2, "name": "Dra. Ana Pereira", "specialty": "Dermatologia" },
@@ -194,7 +199,7 @@ Consultas já existentes no seed: Joao da Silva com Alicio **hoje às 11h**; Lua
 
 ```json
 {
-  "message": "Cancele minha consulta com Dr. Alicio da Silva que tenho hoje às 11h, me chamo Joao da Silva",
+  "question": "Cancele minha consulta com Dr. Alicio da Silva que tenho hoje às 11h, me chamo Joao da Silva",
   "professionals": [
     { "id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia" },
     { "id": 2, "name": "Dra. Ana Pereira", "specialty": "Dermatologia" },
@@ -207,7 +212,7 @@ Consultas já existentes no seed: Joao da Silva com Alicio **hoje às 11h**; Lua
 
 ```json
 {
-  "message": "Cancele minha consulta com Dr. Alicio da Silva que tenho hoje às 11h, me chamo Outra Pessoa",
+  "question": "Cancele minha consulta com Dr. Alicio da Silva que tenho hoje às 11h, me chamo Outra Pessoa",
   "professionals": [
     { "id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia" }
   ]
@@ -218,7 +223,7 @@ Consultas já existentes no seed: Joao da Silva com Alicio **hoje às 11h**; Lua
 
 ```json
 {
-  "message": "Qual a previsão do tempo amanhã?",
+  "question": "Qual a previsão do tempo amanhã?",
   "professionals": [
     { "id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia" }
   ]
@@ -231,7 +236,7 @@ Exemplo com curl:
 curl -X POST http://127.0.0.1:8000/chat \
   -H "Content-Type: application/json" \
   -d '{
-    "message": "Olá, sou Maria Santos e quero agendar com Dr. Alicio da Silva amanhã às 15h",
+    "question": "Olá, sou Maria Santos e quero agendar com Dr. Alicio da Silva amanhã às 15h",
     "professionals": [
       {"id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia"},
       {"id": 2, "name": "Dra. Ana Pereira", "specialty": "Dermatologia"},
@@ -289,6 +294,8 @@ Olá, sou Maria Santos e quero agendar com Dr. Alicio da Silva amanhã às 15h p
 }
 ```
 
+> No Studio o JSON vai no **content** da mensagem (por isso usa `message`). Na API HTTP o campo é `question`.
+
 **Cancelar no Studio (texto)** → `cancel_success`
 
 ```text
@@ -319,6 +326,7 @@ Dicas:
 | Resposta final (LLM) | `app/graph/nodes/message_generator_node.py` |
 | Schema da mensagem | `app/models/message.py` |
 | Estado do grafo | `app/graph/graph.py` (`GraphState`) |
+| Factory / DI | `app/graph/factory.py` |
 | Persistência in-memory | `app/services/appointment_service.py` |
 | Cliente OpenRouter | `app/services/open_router_service.py` |
 | Schema de intent | `app/models/intent.py` |

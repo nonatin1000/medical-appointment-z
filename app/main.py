@@ -1,45 +1,58 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from langchain_core.messages import HumanMessage
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.config import configure_langsmith
-from app.graph.graph import build_appointment_graph
+from app.graph.factory import build_graph
 
 configure_langsmith()
 
 logger = logging.getLogger(__name__)
 
 app = FastAPI()
-graph = build_appointment_graph()
+graph = build_graph()
 
 
 class ChatRequest(BaseModel):
-    message: str
+    """Body alinhado ao TS (`question`), com `message` como alias opcional."""
+
+    question: Optional[str] = Field(default=None, min_length=10)
+    message: Optional[str] = Field(default=None, min_length=10)
     professionals: List[Dict[str, Any]] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def require_question_or_message(self) -> "ChatRequest":
+        if not (self.question or self.message):
+            raise ValueError("question is required")
+        return self
+
+    @property
+    def text(self) -> str:
+        return self.question or self.message or ""
 
 
 @app.post("/chat")
 def chat(payload: ChatRequest):
     """Chat with the appointment graph."""
     initial_state = {
-        "messages": [HumanMessage(content=payload.message)],
+        "messages": [HumanMessage(content=payload.text)],
         "professionals": payload.professionals,
     }
 
     try:
-        result = graph.invoke(
+        return graph.invoke(
             initial_state,
             config={"run_name": "medical-appointment-graph"},
         )
-        return {"state": result}
-    except Exception as e:
+    except Exception:
         logger.exception("Error processing chat request")
-        raise HTTPException(
+        return JSONResponse(
             status_code=500,
-            detail="An error occurred while processing your request.",
-        ) from e
+            content={"error": "An error occurred while processing your request."},
+        )

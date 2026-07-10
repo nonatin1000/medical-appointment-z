@@ -47,7 +47,7 @@ def test_book_appointment_success(appointment_service: AppointmentService, free_
 
 def test_book_appointment_raises_when_unavailable(appointment_service: AppointmentService):
     dt = appointment_module._today_at_11_utc()
-    with pytest.raises(ValueError, match="Appointment not available"):
+    with pytest.raises(ValueError, match="Horário indisponível para este profissional"):
         appointment_service.book_appointment(
             professional_id=professionals[0]["id"],
             date=dt,
@@ -63,11 +63,11 @@ def test_cancel_appointment_success(appointment_service: AppointmentService):
 
 
 def test_cancel_appointment_raises_when_not_found(appointment_service: AppointmentService, free_slot: datetime):
-    with pytest.raises(ValueError, match="Appointment not found"):
+    with pytest.raises(ValueError, match="Agendamento não encontrado para cancelamento"):
         appointment_service.cancel_appointment(professionals[0]["id"], "Joao da Silva", free_slot)
 
 
 def test_cancel_appointment_raises_for_wrong_patient(appointment_service: AppointmentService):
     dt = appointment_module._today_at_11_utc()
-    with pytest.raises(ValueError, match="Appointment not found"):
+    with pytest.raises(ValueError, match="Agendamento não encontrado para cancelamento"):
         appointment_service.cancel_appointment(professionals[0]["id"], "Outra Pessoa", dt)

@@ -66,7 +66,7 @@ class AppointmentService:
 
     def book_appointment(self, professional_id: int, date: datetime, patient_name: str, reason: str) -> dict:
         if not self.check_availability(professional_id, date):
-            raise ValueError("Appointment not available")
+            raise ValueError("Horário indisponível para este profissional")
 
         new_appointment = {
             "date": date.isoformat(),
@@ -86,4 +86,4 @@ class AppointmentService:
             ):
                 del _appointments[index]
                 return True
-        raise ValueError("Appointment not found")
+        raise ValueError("Agendamento não encontrado para cancelamento")

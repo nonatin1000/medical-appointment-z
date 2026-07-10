@@ -1,14 +1,14 @@
 from datetime import datetime, timedelta, timezone
 import re
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
 
 import app.main as app_main
 from app.graph import graph as graph_module
-from app.graph.nodes import message_generator_node as message_generator_module
 import app.services.appointment_service as svc
-from app.services.appointment_service import professionals  # ajuste o caminho se necessário
+from app.services.appointment_service import AppointmentService, professionals
 
 app = app_main.app
 
@@ -16,7 +16,7 @@ client = TestClient(app)
 
 
 def make_request(message: str):
-    return client.post("/chat", json={"message": message, "professionals": professionals})
+    return client.post("/chat", json={"question": message, "professionals": professionals})
 
 
 def _extract_patient_name(text: str) -> str | None:
@@ -140,13 +140,15 @@ def reset_state(monkeypatch: pytest.MonkeyPatch):
             message = "Posso ajudá-lo(a) a agendar ou cancelar consultas médicas."
         return {"success": True, "data": MessageSchema(message=message)}
 
-    monkeypatch.setattr(graph_module, "identify_intent_node", _stub_identify_intent_node)
+    llm = MagicMock()
+    llm.generate_structured.side_effect = _stub_generate_structured
+
     monkeypatch.setattr(
-        message_generator_module.open_router_service,
-        "generate_structured",
-        _stub_generate_structured,
+        graph_module,
+        "create_identify_intent_node",
+        lambda _llm: _stub_identify_intent_node,
     )
-    app_main.graph = graph_module.build_appointment_graph()
+    app_main.graph = graph_module.build_appointment_graph(llm, AppointmentService())
     yield
 
 
@@ -161,10 +163,10 @@ def test_schedule_appointment_success():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["state"]["messages"][0]["content"] == message
-    assert body["state"]["intent"] == "schedule"
-    assert body["state"]["action_success"] is True
-    assert body["state"]["messages"][-1]["content"] == "Sua solicitação foi concluída com sucesso."
+    assert body["messages"][0]["content"] == message
+    assert body["intent"] == "schedule"
+    assert body["action_success"] is True
+    assert body["messages"][-1]["content"] == "Sua solicitação foi concluída com sucesso."
 
 
 def test_cancel_appointment_success():
@@ -183,10 +185,10 @@ def test_cancel_appointment_success():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["state"]["messages"][0]["content"] == cancel_message
-    assert body["state"]["intent"] == "cancel"
-    assert body["state"]["action_success"] is True
-    assert body["state"]["messages"][-1]["content"] == "Sua solicitação foi concluída com sucesso."
+    assert body["messages"][0]["content"] == cancel_message
+    assert body["intent"] == "cancel"
+    assert body["action_success"] is True
+    assert body["messages"][-1]["content"] == "Sua solicitação foi concluída com sucesso."
 
 
 def test_cancel_nonexistent_appointment():
@@ -195,10 +197,10 @@ def test_cancel_nonexistent_appointment():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["state"]["intent"] == "cancel"
-    assert body["state"]["action_success"] is False
-    assert body["state"]["action_error"]
-    assert body["state"]["messages"][-1]["content"].startswith("Ocorreu um erro:")
+    assert body["intent"] == "cancel"
+    assert body["action_success"] is False
+    assert body["action_error"]
+    assert body["messages"][-1]["content"].startswith("Ocorreu um erro:")
 
 
 def test_schedule_duplicate_time_fails():
@@ -208,10 +210,10 @@ def test_schedule_duplicate_time_fails():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["state"]["intent"] == "schedule"
-    assert body["state"]["action_success"] is False
-    assert body["state"]["action_error"]
-    assert body["state"]["messages"][-1]["content"].startswith("Ocorreu um erro:")
+    assert body["intent"] == "schedule"
+    assert body["action_success"] is False
+    assert body["action_error"]
+    assert body["messages"][-1]["content"].startswith("Ocorreu um erro:")
 
 
 def test_unknown_intent_returns_message():
@@ -220,5 +222,5 @@ def test_unknown_intent_returns_message():
 
     assert response.status_code == 200
     body = response.json()
-    assert body["state"]["intent"] == "unknown"
-    assert body["state"]["messages"][-1]["content"]  # resposta do bot
+    assert body["intent"] == "unknown"
+    assert body["messages"][-1]["content"]  # resposta do bot
