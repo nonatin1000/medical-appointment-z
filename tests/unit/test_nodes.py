@@ -9,6 +9,7 @@ from app.graph.nodes.identify_intent_node import identify_intent_node
 from app.graph.nodes.message_generator_node import message_generator_node
 from app.graph.nodes.scheduler_node import scheduler_node
 from app.models.intent import IntentSchema
+from app.models.message import MessageSchema
 from app.services.appointment_service import professionals
 
 
@@ -109,11 +110,26 @@ def test_canceller_node_not_found(free_slot):
 def test_message_generator_success():
     state = {
         "messages": [HumanMessage(content="oi")],
+        "intent": "schedule",
+        "professional_id": 1,
+        "professional_name": "Dr. Alicio da Silva",
+        "patient_name": "Maria Santos",
+        "datetime": "2026-07-11T14:00:00Z",
         "action_success": True,
     }
-    result = message_generator_node(state)
+    mock_result = {"success": True, "data": MessageSchema(message="Sua consulta foi agendada com sucesso!")}
+
+    with patch(
+        "app.graph.nodes.message_generator_node.open_router_service.generate_structured",
+        return_value=mock_result,
+    ) as mock_generate:
+        result = message_generator_node(state)
+
     assert isinstance(result["messages"][-1], AIMessage)
-    assert "sucesso" in result["messages"][-1].content.lower()
+    assert result["messages"][-1].content == "Sua consulta foi agendada com sucesso!"
+    user_prompt = mock_generate.call_args.args[1]
+    assert "schedule_success" in user_prompt
+    assert "Maria Santos" in user_prompt
 
 
 def test_message_generator_missing_fields():
@@ -137,5 +153,30 @@ def test_message_generator_action_error():
         "datetime": "2026-07-09T11:00:00Z",
         "action_error": "Appointment not found",
     }
-    result = message_generator_node(state)
-    assert "Appointment not found" in result["messages"][-1].content
+    mock_result = {"success": True, "data": MessageSchema(message="Não encontrei sua consulta, Joao.")}
+
+    with patch(
+        "app.graph.nodes.message_generator_node.open_router_service.generate_structured",
+        return_value=mock_result,
+    ) as mock_generate:
+        result = message_generator_node(state)
+
+    assert result["messages"][-1].content == "Não encontrei sua consulta, Joao."
+    user_prompt = mock_generate.call_args.args[1]
+    assert "cancel_error" in user_prompt
+    assert "Appointment not found" in user_prompt
+
+
+def test_message_generator_llm_failure():
+    state = {
+        "messages": [],
+        "intent": "unknown",
+    }
+
+    with patch(
+        "app.graph.nodes.message_generator_node.open_router_service.generate_structured",
+        return_value={"success": False, "error": "llm down"},
+    ):
+        result = message_generator_node(state)
+
+    assert "não consegui gerar uma resposta" in result["messages"][-1].content

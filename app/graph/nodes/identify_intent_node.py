@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Tuple
 from app.models.intent import IntentSchema
 from app.prompts.v1.identify_intent import USER_PROMPT_TEMPLATE, get_system_prompt
 from app.services.appointment_service import professionals as default_professionals
-from app.services.open_router_services import open_router_service
+from app.services.open_router_service import open_router_service
 
 logger = logging.getLogger(__name__)
 

@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 import app.main as app_main
 from app.graph import graph as graph_module
+from app.graph.nodes import message_generator_node as message_generator_module
 import app.services.appointment_service as svc
 from app.services.appointment_service import professionals  # ajuste o caminho se necessário
 
@@ -125,7 +126,26 @@ def reset_state(monkeypatch: pytest.MonkeyPatch):
 
         return {**state, **data}
 
+    def _stub_generate_structured(system_prompt: str, user_prompt: str, schema):
+        import json
+
+        from app.models.message import MessageSchema
+
+        scenario = json.loads(user_prompt)["scenario"]
+        if scenario.endswith("_success"):
+            message = "Sua solicitação foi concluída com sucesso."
+        elif scenario.endswith("_error"):
+            message = "Ocorreu um erro: não foi possível concluir sua solicitação."
+        else:
+            message = "Posso ajudá-lo(a) a agendar ou cancelar consultas médicas."
+        return {"success": True, "data": MessageSchema(message=message)}
+
     monkeypatch.setattr(graph_module, "identify_intent_node", _stub_identify_intent_node)
+    monkeypatch.setattr(
+        message_generator_module.open_router_service,
+        "generate_structured",
+        _stub_generate_structured,
+    )
     app_main.graph = graph_module.build_appointment_graph()
     yield
 

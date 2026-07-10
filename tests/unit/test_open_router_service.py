@@ -3,7 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from app.models.intent import IntentSchema
-from app.services.open_router_services import OpenRouterService
+from app.services.open_router_service import OpenRouterService
 
 
 def test_generate_structured_success(intent_schedule: IntentSchema):
@@ -13,7 +13,7 @@ def test_generate_structured_success(intent_schedule: IntentSchema):
     mock_client.with_structured_output.return_value = structured
 
     with patch(
-        "app.services.open_router_services.ChatOpenAI",
+        "app.services.open_router_service.ChatOpenAI",
         return_value=mock_client,
     ):
         service = OpenRouterService()
@@ -32,7 +32,7 @@ def test_generate_structured_failure_returns_error_dict():
     mock_client.with_structured_output.return_value = structured
 
     with patch(
-        "app.services.open_router_services.ChatOpenAI",
+        "app.services.open_router_service.ChatOpenAI",
         return_value=mock_client,
     ):
         service = OpenRouterService()

@@ -1,4 +1,5 @@
 import logging
+from typing import NotRequired, TypedDict
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
@@ -13,6 +14,12 @@ from app.config import (
 from app.models.model_config import ModelConfig
 
 logger = logging.getLogger(__name__)
+
+
+class StructuredResult(TypedDict):
+    success: bool
+    data: NotRequired[BaseModel]
+    error: NotRequired[str]
 
 
 class OpenRouterService:
@@ -40,7 +47,7 @@ class OpenRouterService:
         system_prompt: str,
         user_prompt: str,
         schema: type[BaseModel],
-    ) -> dict:
+    ) -> StructuredResult:
         try:
             llm = self.llm_client.with_structured_output(schema)
             data = llm.invoke(

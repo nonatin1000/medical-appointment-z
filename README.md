@@ -37,11 +37,11 @@ medical-appointment-z/
 ├── app/
 │   ├── main.py                 # API FastAPI (/chat)
 │   ├── config.py               # env + LangSmith + OpenRouter
-│   ├── models/                 # ModelConfig, IntentSchema
-│   ├── prompts/v1/             # prompts do classificador
+│   ├── models/                 # ModelConfig, IntentSchema, MessageSchema
+│   ├── prompts/v1/             # prompts do classificador e do gerador de mensagens
 │   ├── services/
 │   │   ├── appointment_service.py
-│   │   └── open_router_services.py
+│   │   └── open_router_service.py
 │   └── graph/
 │       ├── graph.py            # StateGraph
 │       └── nodes/              # identify / schedule / cancel / message
@@ -209,7 +209,7 @@ make test
 ```
 
 Há testes unitários em `tests/unit/` (serviço, schema, OpenRouter mockado, nodes e roteamento).  
-Os testes E2E usam stub do `identify_intent` (sem chamar LLM), para ficarem determinísticos.
+Os testes E2E usam stubs do `identify_intent` e do gerador de mensagens (sem chamar LLM), para ficarem determinísticos.
 
 ## LangGraph Studio
 
@@ -268,13 +268,15 @@ Dicas:
 | Conceito | Onde está |
 |---|---|
 | Prompt de classificação | `app/prompts/v1/identify_intent.py` |
+| Prompt da resposta final | `app/prompts/v1/message_generator.py` |
 | Nó de intent (LLM) | `app/graph/nodes/identify_intent_node.py` |
 | Agendamento | `app/graph/nodes/scheduler_node.py` |
 | Cancelamento | `app/graph/nodes/canceller_node.py` |
-| Resposta final | `app/graph/nodes/message_generator_node.py` |
+| Resposta final (LLM) | `app/graph/nodes/message_generator_node.py` |
+| Schema da mensagem | `app/models/message.py` |
 | Estado do grafo | `app/graph/graph.py` (`GraphState`) |
 | Persistência in-memory | `app/services/appointment_service.py` |
-| Cliente OpenRouter | `app/services/open_router_services.py` |
+| Cliente OpenRouter | `app/services/open_router_service.py` |
 | Schema de intent | `app/models/intent.py` |
 
 ## Observabilidade
