@@ -16,10 +16,10 @@ Versão em Python do template TypeScript do curso, para estudar os mesmos concei
 
 Recebe uma mensagem do usuário e:
 
-1. identifica a intenção (`schedule`, `cancel` ou `unknown`)
+1. identifica a intenção (`schedule`, `cancel` ou `unknown`) via LLM
 2. extrai dados (paciente, profissional, data/hora)
 3. agenda ou cancela a consulta
-4. devolve uma resposta final
+4. gera a resposta final via LLM (tom de recepcionista médica)
 
 ## Stack
 
@@ -136,7 +136,34 @@ POST /chat
 Content-Type: application/json
 ```
 
-## Exemplos de prompts
+## Prompts do LLM
+
+O grafo chama o LLM **duas vezes** (structured output via OpenRouter):
+
+| Etapa | Arquivo | Schema | Papel |
+|---|---|---|---|
+| Classificar intent | `app/prompts/v1/identify_intent.py` | `IntentSchema` | Extrai `intent`, profissional, data/hora, paciente |
+| Gerar resposta | `app/prompts/v1/message_generator.py` | `MessageSchema` | Mensagem final no tom de recepcionista |
+
+### Cenários do gerador de mensagens
+
+O node monta o `scenario` a partir do estado:
+
+| Scenario | Quando |
+|---|---|
+| `schedule_success` | agendamento ok |
+| `schedule_error` | falha ao agendar (horário ocupado, validação, etc.) |
+| `cancel_success` | cancelamento ok |
+| `cancel_error` | falha ao cancelar (não encontrado, paciente errado, etc.) |
+| `unknown` | intent desconhecido ou erro no classificador |
+
+Exemplos de resposta esperada (do próprio prompt):
+
+- **schedule_success**: *"Sua consulta com o Dr. Alicio da Silva em 12 de fevereiro de 2026 às 16h foi confirmada para Maria Santos. Aguardamos sua visita!"*
+- **cancel_error**: *"Não encontrei nenhuma consulta com essas informações. Por favor, verifique a data, o horário e o nome do médico."*
+- **unknown**: *"Posso ajudá-lo(a) a agendar ou cancelar consultas médicas. Como posso ajudá-lo(a) com sua consulta hoje?"*
+
+## Exemplos para testar
 
 Profissionais padrão (seed):
 
@@ -150,7 +177,7 @@ Consultas já existentes no seed: Joao da Silva com Alicio **hoje às 11h**; Lua
 
 ### Swagger / `POST /chat`
 
-**Agendar**
+**Agendar** → cenário `schedule_success`
 
 ```json
 {
@@ -163,7 +190,7 @@ Consultas já existentes no seed: Joao da Silva com Alicio **hoje às 11h**; Lua
 }
 ```
 
-**Cancelar** (bate com o seed)
+**Cancelar** (bate com o seed) → cenário `cancel_success`
 
 ```json
 {
@@ -176,7 +203,18 @@ Consultas já existentes no seed: Joao da Silva com Alicio **hoje às 11h**; Lua
 }
 ```
 
-**Desconhecido**
+**Cancelar com paciente errado** → cenário `cancel_error`
+
+```json
+{
+  "message": "Cancele minha consulta com Dr. Alicio da Silva que tenho hoje às 11h, me chamo Outra Pessoa",
+  "professionals": [
+    { "id": 1, "name": "Dr. Alicio da Silva", "specialty": "Cardiologia" }
+  ]
+}
+```
+
+**Desconhecido** → cenário `unknown`
 
 ```json
 {
@@ -232,7 +270,7 @@ No dropdown do Studio deve aparecer:
 
 ### 3. Como testar no Studio
 
-**Opção A — só texto** (usa a lista padrão de profissionais)
+**Opção A — só texto** (usa a lista padrão de profissionais) → `schedule_success`
 
 ```text
 Olá, sou Maria Santos e quero agendar com Dr. Alicio da Silva amanhã às 15h para um check-up
@@ -251,10 +289,16 @@ Olá, sou Maria Santos e quero agendar com Dr. Alicio da Silva amanhã às 15h p
 }
 ```
 
-**Cancelar no Studio (texto)**
+**Cancelar no Studio (texto)** → `cancel_success`
 
 ```text
 Cancele minha consulta com Dr. Alicio da Silva que tenho hoje às 11h, me chamo Joao da Silva
+```
+
+**Desconhecido no Studio** → `unknown`
+
+```text
+Qual a previsão do tempo amanhã?
 ```
 
 Dicas:
@@ -262,7 +306,7 @@ Dicas:
 - use **New thread** a cada teste limpo
 - não cancele o run no meio (pode deixar estado inconsistente)
 - se `professionals` não vier, o grafo usa a lista padrão do `AppointmentService`
-
+- a mensagem final vem do LLM (`message_generator`); o texto muda a cada run, mas o tom e o cenário devem bater
 ## Conceitos importantes
 
 | Conceito | Onde está |
@@ -302,6 +346,8 @@ make docker-logs
 ## Observações
 
 - O storage de consultas é **em memória** (reinicia ao reiniciar o processo/container).
-- `reason` é opcional no agendamento.
+- `reason` é opcional no agendamento; se omitido, usa `"general consultation"`.
 - Campos obrigatórios para schedule/cancel: `professional_id`, `patient_name`, `datetime`.
+- O cancelamento exige o **mesmo** `patient_name` da consulta (não cancela consulta de outra pessoa).
+- A resposta final é gerada pelo LLM (não é mais mensagem fixa por regra).
 - Os containers usam o `.env` via `docker-compose.yml` (API na porta `8000`, LangGraph Dev na `2024`).
